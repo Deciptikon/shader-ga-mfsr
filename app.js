@@ -1,7 +1,26 @@
 import GeneticAlgorithm from "./GeneticAtgotithm.js";
-import MultiImage from "./MultiImage.js";
+import { imageToArray, loadImg, showImage } from "./Image.js";
 import { calculateSSD } from "./Shaders.js";
 import TwoImage from "./TwoImage.js";
+import MultiImage from "./MultiImage.js";
+
+const listURLImg = ["./images/img0.png", "./images/img1.png"];
+let listImg = [];
+
+loadImg(listURLImg, (images) => {
+  images.forEach((img) => {
+    listImg.push(imageToArray(img));
+  });
+
+  let k = 0;
+  setInterval(() => {
+    showImage(listImg[k % 2], document.body);
+    k++;
+    console.log(k);
+  }, 1000);
+});
+
+//console.log(img0);
 
 console.log("twoGA");
 const twoGA = new GeneticAlgorithm({
@@ -13,7 +32,7 @@ const twoGA = new GeneticAlgorithm({
 
 twoGA.initializePopulation();
 
-twoGA.run(100, { x: 7, y: 17 }, (result) => {
+twoGA.run(10, { x: 7, y: 17 }, (result) => {
   console.log(result);
 });
 
@@ -28,7 +47,7 @@ const multiGA = new GeneticAlgorithm({
 
 multiGA.initializePopulation();
 
-multiGA.run(1000, { x: 7, y: 17, z: -5.66666 }, (result) => {
+multiGA.run(10, { x: 7, y: 17, z: -5.66666 }, (result) => {
   console.log(result);
 });
 
