@@ -1,18 +1,34 @@
 import GeneticAlgorithm from "./GeneticAtgotithm.js";
+import MultiImage from "./MultiImage.js";
 import { calculateSSD } from "./Shaders.js";
+import TwoImage from "./TwoImage.js";
 
-// Создаем простой ГА
-const ga = new GeneticAlgorithm({
+console.log("twoGA");
+const twoGA = new GeneticAlgorithm({
   populationSize: 10,
   mutationRate: 0.1,
   crossoverRate: 0.8,
+  TClass: TwoImage,
 });
 
-// Инициализируем
-ga.initializePopulation();
+twoGA.initializePopulation();
 
-// Запускаем на 100 поколений
-ga.run(100, { x: 7, y: 17 }, (result) => {
+twoGA.run(100, { x: 7, y: 17 }, (result) => {
+  console.log(result);
+});
+
+//--------------
+console.log("multiGA");
+const multiGA = new GeneticAlgorithm({
+  populationSize: 10,
+  mutationRate: 0.1,
+  crossoverRate: 0.8,
+  TClass: MultiImage,
+});
+
+multiGA.initializePopulation();
+
+multiGA.run(1000, { x: 7, y: 17, z: -5.66666 }, (result) => {
   console.log(result);
 });
 

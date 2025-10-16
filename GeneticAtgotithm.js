@@ -1,56 +1,9 @@
-export class Parent {
-  constructor(genes = {}, fit = null, age = 0) {
-    this.genes = genes;
-    this.fit = fit;
-    this.age = age;
-  }
-
-  random(val = 100) {
-    return new Parent({
-      x: (2 * Math.random() - 1) * val,
-      y: (2 * Math.random() - 1) * val,
-    });
-  }
-
-  copy() {
-    return new Parent({ ...this.genes }, this.fit, this.age);
-  }
-
-  crossover(parent, val = 0.5) {
-    const { x: x1, y: y1 } = this.genes;
-    const { x: x2, y: y2 } = parent.genes;
-    const g = {
-      x: Math.random() > val ? x1 : x2,
-      y: Math.random() > val ? y1 : y2,
-    };
-    return new Parent(g);
-  }
-
-  mutation(val = 1) {
-    const { x, y } = this.genes;
-    const g = {
-      x: (2 * Math.random() - 1) * val + x,
-      y: (2 * Math.random() - 1) * val + y,
-    };
-    return new Parent(g);
-  }
-
-  fitness(data) {
-    if (this.fit !== null) {
-      return this.fit;
-    }
-
-    const { x, y } = this.genes;
-    this.fit = Math.pow(x - data.x, 2) + Math.pow(y - data.y, 2);
-    return this.fit;
-  }
-}
-
 export default class GeneticAlgorithm {
   constructor(config) {
     this.populationSize = config.populationSize;
     this.mutationRate = config.mutationRate;
     this.crossoverRate = config.crossoverRate;
+    this.TClass = config.TClass;
 
     this.population = [];
   }
@@ -58,7 +11,7 @@ export default class GeneticAlgorithm {
   initializePopulation(val = 50) {
     this.population = [];
     for (let i = 0; i < this.populationSize; i++) {
-      this.population.push(new Parent().random(val));
+      this.population.push(this.TClass.random(val));
     }
   }
 
@@ -68,7 +21,7 @@ export default class GeneticAlgorithm {
       if (individual) {
         this.population.push(individual.mutation(val));
       } else {
-        this.population.push(new Parent().random(val));
+        this.population.push(this.TClass.random(val));
       }
     }
   }
