@@ -60,7 +60,6 @@ export default class GeneticAlgorithm {
     for (let i = 0; i < this.populationSize; i++) {
       this.population.push(new Parent().random(val));
     }
-    //console.log("this.population", this.population);
   }
 
   initializeFromIndividual(individual = null, val = 50) {
@@ -75,7 +74,6 @@ export default class GeneticAlgorithm {
   }
 
   fitness(population, data) {
-    //console.log("fitness(population, data)");
     for (let individual of population) {
       individual.fitness(data);
     }
@@ -83,15 +81,12 @@ export default class GeneticAlgorithm {
   }
 
   selection(population) {
-    //console.log("selection(population)");
     return population
       .sort((a, b) => a.fit - b.fit)
       .slice(0, this.populationSize);
   }
 
   crossover(population) {
-    //console.log("crossover(population)");
-
     const populationSize = population.length;
     const crossList = [];
 
@@ -106,7 +101,6 @@ export default class GeneticAlgorithm {
   }
 
   mutate(population, val = 1) {
-    //console.log("mutate(population, val = 1)");
     const mutList = [];
 
     for (const individual of population) {
@@ -120,24 +114,15 @@ export default class GeneticAlgorithm {
 
   // Запуск одной итерации
   evolve(population, data) {
-    console.log("evolve(population, data)");
-    //console.log(population);
     population = this.crossover(population);
-    //console.log(population);
     population = this.mutate(population);
-    //console.log(population);
     population = this.fitness(population, data);
-    //console.log(population);
     population = this.selection(population);
-    //console.log(population);
     return population;
   }
 
   run(generations, data, onProgress = null) {
-    console.log("run(generations, data, onProgress = null)");
     for (let i = 0; i < generations; i++) {
-      console.log("");
-      console.log(`----- ${i} -----------------`);
       this.population = this.evolve(this.population, data);
 
       if (onProgress) {
