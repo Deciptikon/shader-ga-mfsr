@@ -26,9 +26,9 @@ export default class GeneticAlgorithm {
     }
   }
 
-  fitness(population, data) {
+  fitness(population, data, kernels) {
     for (let individual of population) {
-      individual.fitness(data);
+      individual.fitness(data, kernels);
     }
     return population;
   }
@@ -66,17 +66,17 @@ export default class GeneticAlgorithm {
   }
 
   // Запуск одной итерации
-  evolve(population, data) {
+  evolve(population, data, kernels) {
     population = this.crossover(population);
     population = this.mutate(population);
-    population = this.fitness(population, data);
+    population = this.fitness(population, data, kernels);
     population = this.selection(population);
     return population;
   }
 
-  run(generations, data, onProgress = null) {
+  run(generations, data, kernels, onProgress = null) {
     for (let i = 0; i < generations; i++) {
-      this.population = this.evolve(this.population, data);
+      this.population = this.evolve(this.population, data, kernels);
 
       if (onProgress) {
         onProgress(this.population[0].genes);

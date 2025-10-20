@@ -1,19 +1,19 @@
 const gpu = new GPU.GPU();
 
 // Функция для создания ядра с конкретными размерами
-function createSquaredDiffKernel(width, height) {
+export function createSquaredDiffKernel(width, height) {
   return gpu
     .createKernel(function (imageA, imageB) {
       const x = this.thread.x;
       const y = this.thread.y;
 
-      const rA = imageA[x][y][0];
-      const gA = imageA[x][y][1];
-      const bA = imageA[x][y][2];
+      const rA = imageA[y][x][0];
+      const gA = imageA[y][x][1];
+      const bA = imageA[y][x][2];
 
-      const rB = imageB[x][y][0];
-      const gB = imageB[x][y][1];
-      const bB = imageB[x][y][2];
+      const rB = imageB[y][x][0];
+      const gB = imageB[y][x][1];
+      const bB = imageB[y][x][2];
 
       const diffR = rA - rB;
       const diffG = gA - gB;
@@ -25,7 +25,9 @@ function createSquaredDiffKernel(width, height) {
 }
 
 // Функция для вычисления SSD
-export function calculateSSD(imageA, imageB, width, height) {
+export function calculateSSD(imageA, imageB) {
+  const width = imageA.length;
+  const height = imageA[0].length;
   const kernel = createSquaredDiffKernel(width, height);
   const squaredDiffs = kernel(imageA, imageB);
 
@@ -39,85 +41,141 @@ export function calculateSSD(imageA, imageB, width, height) {
   return total;
 }
 
+export function calculateSSDKer(imageA, imageB, kernel) {
+  const squaredDiffs = kernel(imageA, imageB);
+
+  let total = 0;
+  for (let x = 0; x < squaredDiffs.length; x++) {
+    const row = squaredDiffs[x];
+
+    if (!row) continue;
+
+    for (let y = 0; y < row.length; y++) {
+      const pixel = row[y];
+      if (pixel) {
+        const [r, g, b] = pixel;
+        total += r + g + b;
+      }
+    }
+  }
+  return total;
+}
+
 // Уменьшение разрешения изображения
-function createDownscaleKernel(scaleFactor) {
+export function createDownscaleKernel(width, height, scale) {
   return gpu
     .createKernel(function (image) {
       const resultX = this.thread.x;
       const resultY = this.thread.y;
+      const scale = this.constants.scale;
+      const count = this.constants.count;
 
-      let sumR = 0,
-        sumG = 0,
-        sumB = 0;
-      const startX = resultX * scaleFactor;
-      const startY = resultY * scaleFactor;
+      let sumR = 0;
+      let sumG = 0;
+      let sumB = 0;
+      const startX = Math.floor(resultX * scale);
+      const startY = Math.floor(resultY * scale);
 
-      // Суммируем блок scaleFactor x scaleFactor из оригинала
-      for (let x = startX; x < startX + scaleFactor; x++) {
-        for (let y = startY; y < startY + scaleFactor; y++) {
-          const pixel = image[x][y];
-          sumR += pixel[0];
-          sumG += pixel[1];
-          sumB += pixel[2];
+      // Суммируем блок scale x scale из оригинала
+      if (scale < 16) {
+        for (let i = 0; i < scale; i++) {
+          for (let j = 0; j < scale; j++) {
+            const x = startX + j;
+            const y = startY + i;
+            sumR += image[y][x][0] / count;
+            sumG += image[y][x][1] / count;
+            sumB += image[y][x][2] / count;
+          }
         }
+        return [sumR, sumG, sumB];
+      } else {
+        for (let i = 0; i < scale; i++) {
+          for (let j = 0; j < scale; j++) {
+            const x = startX + j;
+            const y = startY + i;
+            sumR += image[y][x][0];
+            sumG += image[y][x][1];
+            sumB += image[y][x][2];
+          }
+        }
+        return [sumR / count, sumG / count, sumB / count];
       }
-
-      const pixelsCount = scaleFactor * scaleFactor;
-      return [sumR / pixelsCount, sumG / pixelsCount, sumB / pixelsCount];
     })
-    .setOutput([width / scaleFactor, height / scaleFactor]); // Выходные размеры
+    .setOutput([Math.floor(width / scale), Math.floor(height / scale)])
+    .setConstants({
+      scale: scale,
+      count: scale * scale,
+    });
 }
 
-export function downscale(imageArray, scaleFactor = 2) {
+export function downscale(imageArray, scale = 2) {
   const width = imageArray.length;
   const height = imageArray[0].length;
-  const downscaleKernel = createDownscaleKernel(scaleFactor).setOutput([
-    width / scaleFactor,
-    height / scaleFactor,
-  ]);
+  const downscaleKernel = createDownscaleKernel(width, height, scale);
   const smallImage = downscaleKernel(imageArray);
   return smallImage;
 }
 
-// Увеличение разрешения изображения
-function createUpscaleKernel(scaleFactor, originalWidth, originalHeight) {
-  return gpu
-    .createKernel(function (image) {
-      // this.thread.x и y - это координаты в УВЕЛИЧЕННОМ изображении
-      const origX = Math.floor(this.thread.x / scaleFactor);
-      const origY = Math.floor(this.thread.y / scaleFactor);
-
-      const pixel = image[origX][origY];
-      return [pixel[0], pixel[1], pixel[2]];
-    })
-    .setOutput([originalWidth * scaleFactor, originalHeight * scaleFactor]);
+export function downscaleKer(imageArray, downscaleKernel) {
+  const smallImage = downscaleKernel(imageArray);
+  return smallImage;
 }
 
-export function upscale(imageArray, scaleFactor = 2) {
+//---------------------------------------------------------------
+// Функция для создания ядра с конкретными размерами
+export function createUpscaleKernel(width, height, scale) {
+  return gpu
+    .createKernel(function (image) {
+      const x = Math.floor(this.thread.x / this.constants.scale);
+      const y = Math.floor(this.thread.y / this.constants.scale);
+
+      const r = image[y][x][0];
+      const g = image[y][x][1];
+      const b = image[y][x][2];
+
+      return [r, g, b];
+    })
+    .setOutput([Math.floor(width * scale), Math.floor(height * scale)])
+    .setConstants({
+      scale: scale,
+    });
+}
+
+export function upscale(imageArray, scale) {
+  console.log("upscale");
+
   const width = imageArray.length;
   const height = imageArray[0].length;
-  const upscaleKernel = createUpscaleKernel(scaleFactor).setOutput([
-    width * scaleFactor,
-    height * scaleFactor,
-  ]);
-  const bigImage = upscaleKernel(imageArray);
-  return bigImage;
+  const kernel = createUpscaleKernel(width, height, scale);
+  const rez = kernel(imageArray);
+
+  return rez;
 }
 
+export function upscaleKer(imageArray, kernel) {
+  const rez = kernel(imageArray);
+
+  return rez;
+}
+//---------------------------------------------------------------
+
 // Сдвиг изображения
-function createShiftKernel(width, height, sx, sy) {
+export function createShiftKernel(width, height) {
   return gpu
-    .createKernel(function (image) {
-      const origX = this.thread.x - this.constants.sx;
-      const origY = this.thread.y - this.constants.sy;
+    .createKernel(function (image, sx, sy) {
+      const x = this.thread.x - sx;
+      const y = this.thread.y - sy;
 
       if (
-        origX >= 0 &&
-        origX < this.constants.width &&
-        origY >= 0 &&
-        origY < this.constants.height
+        x >= 0 &&
+        x < this.constants.width &&
+        y >= 0 &&
+        y < this.constants.height
       ) {
-        return image[origX][origY];
+        const r = image[y][x][0];
+        const g = image[y][x][1];
+        const b = image[y][x][2];
+        return [r, g, b];
       }
 
       return [0, 0, 0];
@@ -126,45 +184,92 @@ function createShiftKernel(width, height, sx, sy) {
     .setConstants({
       width: width,
       height: height,
-      sx: sx,
-      sy: sy,
     });
 }
 
 export function shift(imageArray, sx, sy) {
   const width = imageArray.length;
   const height = imageArray[0].length;
-  const shiftKernel = createShiftKernel(width, height, sx, sy).setOutput([
-    width,
-    height,
-  ]);
-  const shiftImage = shiftKernel(imageArray);
+  const shiftKernel = createShiftKernel(width, height);
+  const shiftImage = shiftKernel(imageArray, sx, sy);
+  return shiftImage;
+}
+
+export function shiftKer(imageArray, sx, sy, shiftKernel) {
+  const shiftImage = shiftKernel(imageArray, sx, sy);
   return shiftImage;
 }
 
 // Вырезание области
-function createCropKernel(cropX, cropY, cropWidth, cropHeight) {
+export function createCropKernel(
+  cropWidth,
+  cropHeight,
+  originalWidth,
+  originalHeight
+) {
   return gpu
-    .createKernel(function (image) {
-      const origX = this.thread.x + this.constants.cropX;
-      const origY = this.thread.y + this.constants.cropY;
+    .createKernel(function (image, cropX, cropY) {
+      const x = this.thread.x + cropX;
+      const y = this.thread.y + cropY;
 
-      return image[origX][origY];
+      // Проверка границ для безопасности
+      if (
+        x >= 0 &&
+        x < this.constants.originalWidth &&
+        y >= 0 &&
+        y < this.constants.originalHeight
+      ) {
+        const r = image[y][x][0];
+        const g = image[y][x][1];
+        const b = image[y][x][2];
+        return [r, g, b];
+      }
+      return [0, 0, 0];
     })
     .setOutput([cropWidth, cropHeight])
     .setConstants({
-      cropX: cropX,
-      cropY: cropY,
+      originalWidth: originalWidth,
+      originalHeight: originalHeight,
     });
 }
 
 export function crop(imageArray, cropX, cropY, cropWidth, cropHeight) {
+  const originalWidth = imageArray.length;
+  const originalHeight = imageArray[0].length;
   const cropKernel = createCropKernel(
-    cropX,
-    cropY,
     cropWidth,
-    cropHeight
-  ).setOutput([cropWidth, cropHeight]);
-  const cropImage = cropKernel(imageArray);
+    cropHeight,
+    originalWidth,
+    originalHeight
+  );
+  const cropImage = cropKernel(imageArray, cropX, cropY);
   return cropImage;
+}
+
+export function cropKer(imageArray, cropX, cropY, cropKernel) {
+  const cropImage = cropKernel(imageArray, cropX, cropY);
+  return cropImage;
+}
+
+export function compileKernels(width, height, scale) {
+  const minWidth = width * scale,
+    minHeight = height * scale,
+    maxWidth = (width + 2) * scale,
+    maxHeight = (height + 2) * scale;
+
+  return {
+    shift: createShiftKernel(width * scale, height * scale),
+    ssd: createSquaredDiffKernel(width * scale, height * scale),
+    crop: null,
+    upscale: createUpscaleKernel(width, height, scale),
+    downscale: createDownscaleKernel(width * scale, height * scale, scale),
+  };
+
+  return {
+    shift: createShiftKernel(maxWidth, maxHeight),
+    ssd: createSquaredDiffKernel(minWidth, minHeight),
+    crop: createCropKernel(minWidth, minHeight, maxWidth, maxHeight),
+    upscale: createUpscaleKernel(width, height, scale),
+    downscale: createDownscaleKernel(minWidth, minHeight, scale),
+  };
 }

@@ -1,3 +1,5 @@
+import { calculateSSDKer, shiftKer } from "./Shaders.js";
+
 export default class TwoImage {
   constructor(genes = {}, fit = null, age = 0) {
     this.genes = genes;
@@ -7,8 +9,8 @@ export default class TwoImage {
 
   static random(val = 100) {
     return new TwoImage({
-      x: (2 * Math.random() - 1) * val,
-      y: (2 * Math.random() - 1) * val,
+      x: Math.ceil((2 * Math.random() - 1) * val - 0.5),
+      y: Math.ceil((2 * Math.random() - 1) * val - 0.5),
     });
   }
 
@@ -29,19 +31,24 @@ export default class TwoImage {
   mutation(val = 1) {
     const { x, y } = this.genes;
     const g = {
-      x: (2 * Math.random() - 1) * val + x,
-      y: (2 * Math.random() - 1) * val + y,
+      x: Math.ceil((2 * Math.random() - 1) * val + x - 0.5),
+      y: Math.ceil((2 * Math.random() - 1) * val + y - 0.5),
     };
     return new TwoImage(g);
   }
 
-  fitness(data) {
+  fitness(data, kernels) {
     if (this.fit !== null) {
       return this.fit;
     }
 
     const { x, y } = this.genes;
-    this.fit = Math.pow(x - data.x, 2) + Math.pow(y - data.y, 2);
+    const { baseImg, secondImg } = data;
+    //console.log("-------", x, y);
+
+    const shiftImg = shiftKer(secondImg, -x, -y, kernels.shift);
+    this.fit = calculateSSDKer(baseImg, shiftImg, kernels.ssd);
+
     return this.fit;
   }
 }

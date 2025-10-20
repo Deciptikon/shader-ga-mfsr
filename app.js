@@ -1,42 +1,81 @@
 import GeneticAlgorithm from "./GeneticAtgotithm.js";
 import { imageToArray, loadImg, showImage } from "./Image.js";
-import { calculateSSD } from "./Shaders.js";
+import {
+  calculateSSDKer,
+  compileKernels,
+  cropKer,
+  shiftKer,
+  upscaleKer,
+} from "./Shaders.js";
 import TwoImage from "./TwoImage.js";
 import MultiImage from "./MultiImage.js";
 
 const listURLImg = ["./images/img0.png", "./images/img1.png"];
 let listImg = [];
 
+const SCALE = 4;
+
 loadImg(listURLImg, (images) => {
   images.forEach((img) => {
     listImg.push(imageToArray(img));
   });
 
-  let k = 0;
-  setInterval(() => {
-    showImage(listImg[k % 2], document.body);
-    k++;
-    console.log(k);
+  const w = listImg[0][0].length;
+  const h = listImg[0].length;
+
+  const KERNELS = compileKernels(w, h, SCALE);
+
+  showImage(listImg[0], document.body);
+  console.log("w=", listImg[0][0].length, "h=", listImg[0].length);
+
+  const k = 2;
+
+  //const sc0 = cropKer(listImg[0], 7, 7, KERNELS.crop);
+  //console.log("w=", sc0[0].length, "h=", sc0.length);
+  //showImage(sc0, document.body);
+
+  const data = {
+    baseImg: upscaleKer(listImg[0], KERNELS.upscale),
+    secondImg: upscaleKer(listImg[1], KERNELS.upscale),
+  };
+
+  showImage(data.baseImg, document.body);
+  console.log("baseImg");
+
+  //const shiftImg = shiftKer(data.secondImg, -10, -20, KERNELS.shift);
+  //showImage(shiftImg, document.body);
+  //console.log(KERNELS.shift);
+
+  //const difff = calculateSSDKer(data.baseImg, shiftImg, KERNELS.ssd);
+  //console.log("SSD=", difff);
+
+  setTimeout(() => {
+    console.log("twoGA");
+    const twoGA = new GeneticAlgorithm({
+      populationSize: 10,
+      mutationRate: 1.0,
+      crossoverRate: 1.0,
+      TClass: TwoImage,
+    });
+
+    twoGA.initializePopulation(30);
+
+    const rez = twoGA.run(25, data, KERNELS, (result) => {
+      console.log(result);
+    });
+
+    const { x, y } = rez;
+    const shiftImg = shiftKer(data.secondImg, -x, -y, KERNELS.shift);
+    showImage(shiftImg, document.body);
+    console.log("shiftImg");
   }, 1000);
+
+  //--------------
 });
 
 //console.log(img0);
 
-console.log("twoGA");
-const twoGA = new GeneticAlgorithm({
-  populationSize: 10,
-  mutationRate: 0.1,
-  crossoverRate: 0.8,
-  TClass: TwoImage,
-});
-
-twoGA.initializePopulation();
-
-twoGA.run(10, { x: 7, y: 17 }, (result) => {
-  console.log(result);
-});
-
-//--------------
+/** 
 console.log("multiGA");
 const multiGA = new GeneticAlgorithm({
   populationSize: 10,
@@ -73,16 +112,16 @@ const imageB = createTestImage(width, height, [0.9, 0.1, 0.1]); // Почти к
 
 // Тестируем
 console.log("Тест 1: Одинаковые изображения");
-const ssd1 = calculateSSD(imageA, imageA, width, height);
+const ssd1 = calculateSSD(imageA, imageA);
 console.log("SSD:", ssd1); // Должно быть ~0
 
 console.log("\nТест 2: Похожие изображения");
-const ssd2 = calculateSSD(imageA, imageB, width, height);
+const ssd2 = calculateSSD(imageA, imageB);
 console.log("SSD:", ssd2); // Должно быть маленькое значение
 
 console.log("\nТест 3: Совсем разные изображения");
 const imageC = createTestImage(width, height, [0.0, 0.0, 1.0]); // Синий
-const ssd3 = calculateSSD(imageA, imageC, width, height);
+const ssd3 = calculateSSD(imageA, imageC);
 console.log("SSD:", ssd3); // Должно быть большое значение
 
 // Проверяем вручную для одного пикселя
@@ -98,3 +137,4 @@ console.log(
   "Ожидаемая общая SSD:",
   (manualDiffR + manualDiffG + manualDiffB) * width * height
 );
+*/
