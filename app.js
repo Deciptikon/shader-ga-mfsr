@@ -28,8 +28,6 @@ loadImg(listURLImg, (images) => {
   showImage(listImg[0], document.body);
   console.log("w=", listImg[0][0].length, "h=", listImg[0].length);
 
-  const k = 2;
-
   //const sc0 = cropKer(listImg[0], 7, 7, KERNELS.crop);
   //console.log("w=", sc0[0].length, "h=", sc0.length);
   //showImage(sc0, document.body);
@@ -64,10 +62,10 @@ loadImg(listURLImg, (images) => {
       console.log(result);
     });
 
-    const { x, y } = rez;
+    const { x, y } = rez.genes;
+    console.log("shiftImg", x, y);
     const shiftImg = shiftKer(data.secondImg, -x, -y, KERNELS.shift);
     showImage(shiftImg, document.body);
-    console.log("shiftImg");
   }, 1000);
 
   //--------------
