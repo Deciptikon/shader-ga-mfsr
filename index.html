@@ -8,9 +8,57 @@
     <link rel="icon" type="image/png" href="./favicon.png" />
   </head>
   <body>
-    <!-- Контейнер -->
-    <div id="container">
-      <canvas id="canvas"></canvas>
+    <!-- Шаблон 1: Загрузка и настройка -->
+    <div id="setupScreen" class="screen active">
+      <h2>Загрузка изображений</h2>
+      <div class="button-container">
+        <input type="file" id="imageUpload" multiple accept="image/*" />
+        <button id="zoomIn" class="button">+</button>
+        <div id="numPreviewScale">8</div>
+        <button id="zoomOut" class="button">-</button>
+        <div class="bar-element"></div>
+        <div class="bar-element">
+          <p>Size:</p>
+          <input type="number" id="numSize" min="1" max="20" value="5" />
+          <span>px</span>
+        </div>
+        <div class="bar-element">
+          <p>Resolution scale:</p>
+          <select id="numScale">
+            <option value="2" selected>2</option>
+            <option value="4">4</option>
+            <option value="8">8</option>
+            <option value="16">16</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+      </div>
+      <button id="switchToProcessing" class="button">Далее</button>
+    </div>
+
+    <!-- Шаблон 2: Обработка -->
+    <div id="processingScreen" class="screen">
+      <h2>Обработка изображений</h2>
+      <div id="comparisonContainer">
+        <div class="image-wrapper">
+          <h3>Исходное</h3>
+          <img id="originalImage" src="" alt="Original" />
+        </div>
+        <div class="image-wrapper">
+          <h3>Результат</h3>
+          <img id="processedImage" src="" alt="Processed" />
+        </div>
+      </div>
+
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+      <div id="progressText">0%</div>
+
+      <canvas id="progressChart" width="400" height="200"></canvas>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/gpu.js@latest/dist/gpu-browser.min.js"></script>
