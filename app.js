@@ -14,13 +14,14 @@ const listURLImg = ["./images/img0.png", "./images/img1.png"];
 
 let uploadedImages = [];
 let pos = {
-  x: 100,
-  y: 100,
+  x: 0,
+  y: 0,
 };
 let delta = {
   x: 0,
   y: 0,
 };
+let posImages = [];
 
 let isDragging = false;
 let lastX, lastY;
@@ -31,7 +32,7 @@ let listImg = [];
 const SCALE = 4;
 
 let STATE = "load";
-let needUpdate = true;
+let needUpdate = false;
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -41,21 +42,25 @@ const W = canvas.width;
 const H = canvas.height;
 console.log(W, H);
 
-const numSizeInput = document.getElementById("numSize");
+const numImgVal = document.getElementById("numImgVal");
+const numSizeVal = document.getElementById("numSizeVal");
 const numScaleInput = document.getElementById("numScale");
 const numPreviewScale = document.getElementById("numPreviewScale");
 
+const paddingCrop = 2;
+
 let previewScale = parseInt(numPreviewScale.textContent);
+let numSize = 16;
+numSizeVal.textContent = `${numSize * 2}`;
 
 let w = 10;
 let h = 10;
-let k = 0;
+let currentImg = null;
 
 startUpdateLoop();
 
 function startUpdateLoop() {
   const interval = setInterval(() => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (STATE === "load") {
       step_load();
     } else {
@@ -65,16 +70,17 @@ function startUpdateLoop() {
 }
 
 function step_load() {
-  console.log("step_load()");
-  const numSizeValue = parseInt(numSizeInput.value);
-  const numScaleValue = parseInt(numScaleInput.value); // получить значение
+  //const numScaleValue = parseInt(numScaleInput.value);
   //console.log("numSizeValue  =", numSizeValue);
   //console.log("numScaleValue =", numScaleValue);
 
   if (needUpdate) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    console.log("step_load()");
     //drawRect();
     if (uploadedImages.length > 0) {
-      const image = uploadedImages[k % uploadedImages.length];
+      const image = uploadedImages[currentImg % uploadedImages.length];
 
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(
@@ -83,8 +89,10 @@ function step_load() {
         0,
         image.width,
         image.height,
-        W / 2 - (image.width / 2 + pos.x - offsetX) * previewScale,
-        H / 2 - (image.height / 2 + pos.y - offsetY) * previewScale,
+        W / 2 -
+          (image.width / 2 + posImages[currentImg].x - offsetX) * previewScale,
+        H / 2 -
+          (image.height / 2 + posImages[currentImg].y - offsetY) * previewScale,
         image.width * previewScale,
         image.height * previewScale
       );
@@ -92,10 +100,11 @@ function step_load() {
       drawRect(
         W / 2,
         H / 2,
-        2 * numSizeValue * previewScale,
-        2 * numSizeValue * previewScale
+        2 * numSize * previewScale,
+        2 * numSize * previewScale
       );
-      k++;
+
+      needUpdate = false;
     }
   }
 }
@@ -105,6 +114,8 @@ function drawRect(x, y, w, h) {
   ctx.strokeStyle = "#ff0000";
   ctx.strokeRect(x - w / 2, y - h / 2, w, h);
 }
+
+function crop(params) {}
 
 function step_process() {
   console.log("step_process()");
@@ -161,7 +172,7 @@ loadImg(listURLImg, (images) => {
     console.log("shiftImg", x, y);
     const shiftImg = shiftKer(data.secondImg, -x, -y, KERNELS.shift);
     showImage(shiftImg, document.body);
-  }, 1000000);
+  }, 1000000000);
 
   //--------------
 });
@@ -232,15 +243,6 @@ console.log(
 );
 */
 
-// открываем изображения и настраиваем их позиционирование и размеры области
-function step_1() {
-  loadImg(listURLImg, (images) => {
-    images.forEach((img) => {
-      listImg.push(imageToArray(img));
-    });
-  });
-}
-
 // Обработчик загрузки изображений
 document.getElementById("imageUpload").addEventListener("change", function (e) {
   const files = e.target.files;
@@ -249,7 +251,11 @@ document.getElementById("imageUpload").addEventListener("change", function (e) {
   for (let file of files) {
     const img = new Image();
     img.onload = function () {
-      uploadedImages.push(img); // Записываем только когда готово
+      uploadedImages.push(img);
+      posImages.push({ ...pos });
+      currentImg = 0;
+      numImgVal.textContent = `0`;
+      needUpdate = true;
     };
     img.src = URL.createObjectURL(file);
   }
@@ -263,9 +269,62 @@ function drawImageToCanvas(image, canvas) {
 }
 
 function startProcessing() {
+  const localImg = [];
+  let k = 1;
+
+  const KERNELS = compileKernels(w, h, SCALE, paddingCrop);
+
+  uploadedImages.forEach((img, idx) => {
+    const arr = imageToArray(img);
+    const imw = arr.length;
+    const imh = arr[0].length;
+    const dpr = window.devicePixelRatio || 1;
+    console.log("im wh:", imw, imh);
+
+    const loc = cropCPU(
+      arr,
+      imw / 2 + posImages[idx].x - numSize,
+      imh / 2 + posImages[idx].y - numSize,
+      (numSize + paddingCrop) * 2,
+      (numSize + paddingCrop) * 2
+    );
+    localImg.push(loc);
+  });
+
+  showImage(localImg[0], document.getElementById("canvasOriginal"));
+
   setInterval(() => {
+    needUpdate = true;
     console.log("processing");
+    showImage(
+      localImg[k % localImg.length],
+      document.getElementById("canvasOriginal")
+    );
+    k++;
   }, 1000);
+}
+
+function cropCPU(arr, x, y, w, h) {
+  const result = [];
+
+  const srcWidth = arr.length;
+  const srcHeight = arr[0] ? arr[0].length : 0;
+
+  for (let newX = 0; newX < w; newX++) {
+    result[newX] = [];
+    for (let newY = 0; newY < h; newY++) {
+      const srcX = Math.ceil(x + newX);
+      const srcY = Math.ceil(y + newY);
+
+      if (srcX >= 0 && srcX < srcWidth && srcY >= 0 && srcY < srcHeight) {
+        result[newX][newY] = [...arr[srcX][srcY]];
+      } else {
+        result[newX][newY] = [0, 0, 0];
+      }
+    }
+  }
+
+  return result;
 }
 
 function setupCanvas() {
@@ -278,6 +337,7 @@ function setupCanvas() {
   canvas.style.height = "500px";
 
   ctx.scale(dpr, dpr);
+  console.log("scale:", dpr);
 }
 
 document
@@ -295,16 +355,65 @@ document
     startProcessing();
   });
 
+document.getElementById("prevImg").addEventListener("click", prevImg);
+
+document.getElementById("nextImg").addEventListener("click", nextImg);
+
+function prevImg() {
+  console.log("prevImg");
+
+  if (currentImg === null) return;
+
+  currentImg--;
+  if (currentImg < 0)
+    currentImg = (currentImg % uploadedImages.length) + uploadedImages.length;
+  numImgVal.textContent = `${currentImg}`;
+  needUpdate = true;
+}
+
+function nextImg() {
+  console.log("nextImg");
+  if (currentImg === null) return;
+
+  currentImg = (currentImg + 1) % uploadedImages.length;
+  numImgVal.textContent = `${currentImg}`;
+  needUpdate = true;
+}
+
 document.getElementById("zoomIn").addEventListener("click", function () {
   previewScale *= 2;
   if (previewScale > 32) previewScale = 32;
   numPreviewScale.textContent = `${previewScale}`;
+  needUpdate = true;
 });
 
 document.getElementById("zoomOut").addEventListener("click", function () {
   previewScale /= 2;
   if (previewScale < 1 / 4) previewScale = 1 / 4;
   numPreviewScale.textContent = `${previewScale}`;
+  needUpdate = true;
+});
+
+document.getElementById("sizeMinus").addEventListener("click", function () {
+  console.log("sizeMinus");
+
+  numSize--;
+  if (numSize < 1) {
+    numSize = 1;
+  }
+  numSizeVal.textContent = `${2 * numSize}`;
+  needUpdate = true;
+});
+
+document.getElementById("sizePlus").addEventListener("click", function () {
+  console.log("sizePlus");
+
+  numSize++;
+  if (numSize > 32) {
+    numSize = 32;
+  }
+  numSizeVal.textContent = `${2 * numSize}`;
+  needUpdate = true;
 });
 
 canvas.addEventListener("mousedown", (e) => {
@@ -324,14 +433,20 @@ canvas.addEventListener("mousemove", (e) => {
 
   lastX = e.offsetX;
   lastY = e.offsetY;
+
+  needUpdate = true;
 });
 
 canvas.addEventListener("mouseup", () => {
   isDragging = false;
   pos.x -= offsetX;
   pos.y -= offsetY;
+  posImages[currentImg].x -= offsetX;
+  posImages[currentImg].y -= offsetY;
+
   offsetX = 0;
   offsetY = 0;
+  needUpdate = true;
 
   console.log("pos =", pos);
 });
@@ -342,6 +457,20 @@ canvas.addEventListener("mouseleave", () => {
   pos.y -= offsetY;
   offsetX = 0;
   offsetY = 0;
+  needUpdate = true;
+});
 
-  console.log("pos =", pos);
+document.addEventListener("keydown", function (event) {
+  switch (event.key) {
+    case "ArrowLeft":
+      if (STATE === "load") prevImg();
+      break;
+    case "ArrowRight":
+      if (STATE === "load") nextImg();
+      break;
+    case "ArrowUp":
+      break;
+    case "ArrowDown":
+      break;
+  }
 });

@@ -19,6 +19,11 @@ body {
   height: 100%;
 }
 
+.divider {
+  margin: 0 10px;
+  color: #f4f4f4;
+}
+
 .button-container {
   top: 10px;
   left: 10px;

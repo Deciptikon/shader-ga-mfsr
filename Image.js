@@ -1,17 +1,9 @@
-export function showImage(imageArray, container, canvasId = "preview") {
-  let canvas = document.getElementById(canvasId);
-
-  if (!canvas) {
-    canvas = document.createElement("canvas");
-    canvas.id = canvasId;
-    container.appendChild(canvas);
-  }
-
-  const ctx = canvas.getContext("2d");
+export function showImage(imageArray, canvasElement) {
+  const ctx = canvasElement.getContext("2d");
   const width = imageArray.length;
   const height = imageArray[0].length;
-  canvas.width = width;
-  canvas.height = height;
+  canvasElement.width = width;
+  canvasElement.height = height;
 
   const imageData = ctx.createImageData(width, height);
 
@@ -19,15 +11,14 @@ export function showImage(imageArray, container, canvasId = "preview") {
     for (let y = 0; y < height; y++) {
       const index = (y * width + x) * 4;
       const pixel = imageArray[x][y];
-      imageData.data[index] = pixel[0] * 255; // R
-      imageData.data[index + 1] = pixel[1] * 255; // G
-      imageData.data[index + 2] = pixel[2] * 255; // B
-      imageData.data[index + 3] = 255; // A
+      imageData.data[index] = pixel[0] * 255;
+      imageData.data[index + 1] = pixel[1] * 255;
+      imageData.data[index + 2] = pixel[2] * 255;
+      imageData.data[index + 3] = 255;
     }
   }
 
   ctx.putImageData(imageData, 0, 0);
-  container.appendChild(canvas);
 }
 
 export function imageToArray(img) {
@@ -45,7 +36,7 @@ export function imageToArray(img) {
     for (let y = 0; y < img.height; y++) {
       const index = (y * img.width + x) * 4;
       array[x][y] = [
-        imageData.data[index] / 255, // R 0-1
+        imageData.data[index] / 255, //     R 0-1
         imageData.data[index + 1] / 255, // G 0-1
         imageData.data[index + 2] / 255, // B 0-1
       ];
@@ -70,4 +61,22 @@ export function loadImg(listURLs, onload) {
     };
     img.src = url;
   });
+}
+
+export function randomImage(width, height) {
+  const array = [];
+
+  for (let x = 0; x < width; x++) {
+    array[x] = [];
+    for (let y = 0; y < height; y++) {
+      // Генерируем случайные значения для RGB в диапазоне [0, 1]
+      array[x][y] = [
+        Math.random(), // R
+        Math.random(), // G
+        Math.random(), // B
+      ];
+    }
+  }
+
+  return array;
 }

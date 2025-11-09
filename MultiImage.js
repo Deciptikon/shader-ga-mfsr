@@ -1,3 +1,5 @@
+import { randomImage } from "./Image.js";
+
 export default class MultiImage {
   constructor(genes = {}, fit = null, age = 0) {
     this.genes = genes;
@@ -9,7 +11,7 @@ export default class MultiImage {
     return new MultiImage({
       x: (2 * Math.random() - 1) * val,
       y: (2 * Math.random() - 1) * val,
-      z: (2 * Math.random() - 1) * val,
+      arr: randomImage(64, 64),
     });
   }
 

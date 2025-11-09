@@ -251,14 +251,14 @@ export function cropKer(imageArray, cropX, cropY, cropKernel) {
   return cropImage;
 }
 
-export function compileKernels(width, height, scale) {
+export function compileKernels(width, height, scale, padding) {
   const minWidth = width * scale,
     minHeight = height * scale,
     maxWidth = (width + 2) * scale,
     maxHeight = (height + 2) * scale;
 
   return {
-    shift: createShiftKernel(width * scale, height * scale),
+    shift: createShiftKernel(width * scale, height * scale), //big
     ssd: createSquaredDiffKernel(width * scale, height * scale),
     crop: null,
     upscale: createUpscaleKernel(width, height, scale),

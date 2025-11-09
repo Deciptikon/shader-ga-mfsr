@@ -13,13 +13,26 @@
       <h2>Загрузка изображений</h2>
       <div class="button-container">
         <input type="file" id="imageUpload" multiple accept="image/*" />
-        <button id="zoomIn" class="button">+</button>
-        <div id="numPreviewScale">8</div>
+
+        <span class="divider">|</span>
+        <span>№</span>
+        <button id="prevImg" class="button">◀</button>
+        <div id="numImgVal">█</div>
+        <button id="nextImg" class="button">▶</button>
+
+        <span class="divider">|</span>
+        <span>Zoom</span>
         <button id="zoomOut" class="button">-</button>
-        <div class="bar-element"></div>
+        <div id="numPreviewScale">2</div>
+        <button id="zoomIn" class="button">+</button>
+
+        <span class="divider">|</span>
+
         <div class="bar-element">
-          <p>Size:</p>
-          <input type="number" id="numSize" min="1" max="20" value="5" />
+          <span>Size</span>
+          <button id="sizeMinus" class="button">-</button>
+          <div id="numSizeVal">8</div>
+          <button id="sizePlus" class="button">+</button>
           <span>px</span>
         </div>
         <div class="bar-element">
@@ -31,25 +44,27 @@
             <option value="16">16</option>
           </select>
         </div>
+        <div class="bar-element">
+          <button id="switchToProcessing" class="button">Далее</button>
+        </div>
       </div>
 
       <div class="canvas-container">
         <canvas id="canvas"></canvas>
       </div>
-      <button id="switchToProcessing" class="button">Далее</button>
     </div>
 
     <!-- Шаблон 2: Обработка -->
     <div id="processingScreen" class="screen">
       <h2>Обработка изображений</h2>
       <div id="comparisonContainer">
-        <div class="image-wrapper">
+        <div class="image-wrapper original">
           <h3>Исходное</h3>
-          <img id="originalImage" src="" alt="Original" />
+          <canvas id="canvasOriginal"></canvas>
         </div>
-        <div class="image-wrapper">
+        <div class="image-wrapper processed">
           <h3>Результат</h3>
-          <img id="processedImage" src="" alt="Processed" />
+          <canvas id="canvasProcessed"></canvas>
         </div>
       </div>
 
